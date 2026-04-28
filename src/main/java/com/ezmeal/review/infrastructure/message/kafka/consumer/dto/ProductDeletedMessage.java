@@ -1,8 +1,8 @@
-package com.ezmeal.review.domain.event.payload.consume;
+package com.ezmeal.review.infrastructure.message.kafka.consumer.dto;
 
 import java.time.LocalDateTime;
 
-public record ProductDeletedEvent(
+public record ProductDeletedMessage(
         String productId,
         String deletedBy,
         LocalDateTime occurredAt
