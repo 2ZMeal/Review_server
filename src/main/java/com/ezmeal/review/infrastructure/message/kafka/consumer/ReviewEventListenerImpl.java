@@ -101,7 +101,7 @@ public class ReviewEventListenerImpl {
             @Header(value = "X-User-Id", required = false) byte[] userIdBytes
     ) {
         String userId = extractStringHeader(userIdBytes, "SYSTEM");
-        log.info("[Kafka] 주체({})의 요청으로 닉네임 일괄 변경을 수행합니다. 대상 유저: {}", userId, message.userId());
+        log.info("[Kafka] ({})의 요청으로 닉네임 일괄 변경을 수행합니다. 대상 유저: {}", userId, message.userId());
         reviewService.bulkUpdateNicknameByUserId(message.userId(), message.newNickname());
     }
 
@@ -111,7 +111,7 @@ public class ReviewEventListenerImpl {
             @Header(value = "X-User-Id", required = false) byte[] userIdBytes
     ) {
         String deletedBy = extractStringHeader(userIdBytes, "SYSTEM");
-        log.info("[Kafka] 주체({})의 요청으로 유저의 모든 리뷰 일괄 삭제를 수행합니다. 대상 유저: {}", deletedBy, message.userId());
+        log.info("[Kafka] ({})의 요청으로 유저의 모든 리뷰 일괄 삭제를 수행합니다. 대상 유저: {}", deletedBy, message.userId());
         reviewService.bulkSoftDeleteByUserId(message.userId(), deletedBy);
     }
 
@@ -121,7 +121,7 @@ public class ReviewEventListenerImpl {
             @Header(value = "X-User-Id", required = false) byte[] userIdBytes
     ) {
         String deletedBy = extractStringHeader(userIdBytes, "SYSTEM");
-        log.info("[Kafka] 주체({})의 요청으로 상품의 모든 리뷰 일괄 삭제를 수행합니다. 대상 상품: {}", deletedBy, message.productId());
+        log.info("[Kafka] ({})의 요청으로 상품의 모든 리뷰 일괄 삭제를 수행합니다. 대상 상품: {}", deletedBy, message.productId());
         reviewService.bulkSoftDeleteByProductId(message.productId(), deletedBy);
     }
 
