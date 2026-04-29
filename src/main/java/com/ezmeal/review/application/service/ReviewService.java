@@ -1,25 +1,20 @@
 package com.ezmeal.review.application.service;
 
 import com.ezmeal.common.exception.types.ConflictException;
-import com.ezmeal.common.exception.types.NotFoundException;
+import com.ezmeal.common.exception.types.ForbiddenException;
 import com.ezmeal.review.application.dto.command.ReviewCreateCommand;
-import com.ezmeal.review.application.dto.command.ReviewDeleteCommand;
-import com.ezmeal.review.application.dto.command.ReviewUpdateCommand;
 import com.ezmeal.review.application.dto.response.ReviewResponse;
 import com.ezmeal.review.domain.event.ReviewEventProducer;
 import com.ezmeal.review.domain.event.payload.publish.ReviewCreatedEvent;
-import com.ezmeal.review.domain.event.payload.publish.ReviewDeletedEvent;
-import com.ezmeal.review.domain.event.payload.publish.ReviewUpdatedEvent;
 import com.ezmeal.review.domain.exception.ReviewErrorCode;
 import com.ezmeal.review.domain.model.Review;
 import com.ezmeal.review.domain.provider.UserData;
 import com.ezmeal.review.domain.provider.UserProvider;
 import com.ezmeal.review.domain.repository.ReviewRepository;
-import feign.Feign;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @Slf4j
@@ -44,24 +39,31 @@ public class ReviewService {
 
     // 리뷰 생성
     public ReviewResponse createReview(ReviewCreateCommand command) {
-
-        // Feign client를 통해 User 서버 호출 (트랜잭션 외부)
         UserData userData = userProvider.getUser(command.userId());
 
-        // 트랜잭션 내부
         Review savedReview = transactionTemplate.execute(status -> {
-            if (reviewRepository.existsActiveByUserIdAndProductId(command.userId(), command.productId())) {
-                throw new ConflictException(ReviewErrorCode.ALREADY_REVIEWED);
+
+            // 삭제 여부와 상관없이 유저-상품으로 리뷰 조회
+            Optional<Review> existingReview = reviewRepository.findByUserIdAndProductId(command.userId(), command.productId());
+
+            if (existingReview.isPresent()) {
+                Review review = existingReview.get();
+                if (review.getDeletedAt() == null) {
+                    // 삭제되지 않은 리뷰가 있는 경우
+                    throw new ConflictException(ReviewErrorCode.ALREADY_REVIEWED);
+                } else {
+                    // 삭제된 리뷰가 있는 경우 (재작성 불가 정책)
+                    throw new ForbiddenException(ReviewErrorCode.CANNOT_REWRITE_DELETED_REVIEW);
+                }
             }
+
+            // 리뷰가 아예 없었던 경우만 정상 생성
             Review review = Review.create(command.userId(), userData.nickname(), command.productId(), command.score(), command.contents());
             return reviewRepository.save(review);
         });
 
-        // 이벤트 발행
         eventProducer.publishCreatedEvent(ReviewCreatedEvent.from(savedReview));
-
         return ReviewResponse.from(savedReview);
     }
-
 
 }

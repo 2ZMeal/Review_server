@@ -64,7 +64,7 @@ public class ReviewEventListenerImpl {
 
             log.info("[Kafka] 유저({})의 요청으로 리뷰({})를 수정합니다.", userId, message.reviewId());
             ReviewUpdateCommand command = message.toCommand(userId, role);
-            reviewService.updateReview(command);
+            // reviewService.updateReview(command);
         }
     }
 
@@ -80,14 +80,14 @@ public class ReviewEventListenerImpl {
         if ("SYSTEM".equals(userId)) {
             log.info("[Kafka] 시스템 요청으로 리뷰({})를 삭제합니다.", message.reviewId());
             ReviewDeleteCommand systemCommand = message.toCommand("SYSTEM", Role.ADMIN);
-            reviewService.deleteReview(systemCommand);
+            // reviewService.deleteReview(systemCommand);
         } else {
             // 일반 유저인 경우에만 엄격한 Role 검사 수행
             Role role = extractRoleHeader(roleBytes);
 
             log.info("[Kafka] 유저({})의 요청으로 리뷰({})를 삭제합니다.", userId, message.reviewId());
             ReviewDeleteCommand command = message.toCommand(userId, role);
-            reviewService.deleteReview(command);
+            // reviewService.deleteReview(command);
         }
     }
 

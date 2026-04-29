@@ -42,6 +42,13 @@ public class ReviewRepositoryImpl implements ReviewRepository {
         return jpaReviewRepository.existsByUserIdAndProductIdAndDeletedAtIsNull(userId, productId);
     }
 
+    // 멱등성 검사 2 (삭제했던 리뷰도 포함)
+    @Override
+    public Optional<Review> findByUserIdAndProductId(String userId, String productId) {
+        return jpaReviewRepository.findByUserIdAndProductId(userId, productId);
+    }
+
+
     // 사용자 닉네임 변경 시 일괄 변경
     @Override
     public void bulkUpdateNicknameByUserId(String userId, String newNickname) {

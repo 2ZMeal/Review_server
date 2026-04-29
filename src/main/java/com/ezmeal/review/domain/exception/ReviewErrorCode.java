@@ -13,7 +13,8 @@ public enum ReviewErrorCode implements ErrorCode {
     REVIEW_FORBIDDEN(HttpStatus.FORBIDDEN, "REVIEW_403_1", "리뷰를 수정하거나 삭제할 권한이 없습니다."),
     INVALID_SCORE(HttpStatus.BAD_REQUEST, "REVIEW_400_1", "리뷰 평점은 1점에서 5점 사이여야 합니다."),
     INVALID_INPUT(HttpStatus.BAD_REQUEST, "REVIEW_400_2", "필수 입력값 검증에 실패하였습니다."),
-    ALREADY_REVIEWED(HttpStatus.CONFLICT, "REVIEW_409_1", "이미 해당 상품에 대한 리뷰를 작성하셨습니다.");
+    ALREADY_REVIEWED(HttpStatus.CONFLICT, "REVIEW_409_1", "이미 해당 상품에 대한 리뷰를 작성하셨습니다."),
+    CANNOT_REWRITE_DELETED_REVIEW(HttpStatus.FORBIDDEN, "REVIEW_403_2", "삭제된 리뷰는 다시 작성할 수 없습니다.");
 
     private final HttpStatus status;
     private final String code;

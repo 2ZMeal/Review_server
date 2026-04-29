@@ -17,6 +17,9 @@ public interface JpaReviewRepository extends JpaRepository<Review, UUID> {
     // 멱등성(중복 생성 방지)을 위한 검증
     boolean existsByUserIdAndProductIdAndDeletedAtIsNull(String userId, String productId);
 
+    // 멱등성 검증 2 (삭제된 것도 포함)
+    Optional<Review> findByUserIdAndProductId(String userId, String productId);
+
     // 회원 탈퇴 시 모든 리뷰 삭제
     @Modifying(clearAutomatically = true)
     @Query("UPDATE Review r " +

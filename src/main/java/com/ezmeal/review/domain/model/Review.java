@@ -95,6 +95,22 @@ public class Review extends BaseEntity {
         }
     }
 
+    // 삭제했던 리뷰 재작성
+    public void recreate(String nickname, int score, String contents) {
+        validateRequiredString(nickname, "nickname");
+        validateScore(score);
+
+        // 내용 덮어쓰기
+        this.nickname = nickname;
+        this.score = score;
+        this.contents = contents;
+
+        // BaseEntity의 protected 필드에 직접 접근하여 삭제 상태 해제 (부활)
+        this.deletedAt = null;
+        this.deletedBy = null;
+    }
+
+
     // 리뷰 점수 검증용 메서드 (1~5점 이내)
     private static void validateScore(int score) {
         if (score < 1 || score > 5) {
