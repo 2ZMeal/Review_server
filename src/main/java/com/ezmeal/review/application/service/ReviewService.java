@@ -2,10 +2,13 @@ package com.ezmeal.review.application.service;
 
 import com.ezmeal.common.exception.types.ConflictException;
 import com.ezmeal.common.exception.types.ForbiddenException;
+import com.ezmeal.common.exception.types.NotFoundException;
 import com.ezmeal.review.application.dto.command.ReviewCreateCommand;
+import com.ezmeal.review.application.dto.command.ReviewUpdateCommand;
 import com.ezmeal.review.application.dto.response.ReviewResponse;
 import com.ezmeal.review.domain.event.ReviewEventProducer;
 import com.ezmeal.review.domain.event.payload.publish.ReviewCreatedEvent;
+import com.ezmeal.review.domain.event.payload.publish.ReviewUpdatedEvent;
 import com.ezmeal.review.domain.exception.ReviewErrorCode;
 import com.ezmeal.review.domain.model.Review;
 import com.ezmeal.review.domain.provider.UserData;
@@ -72,6 +75,24 @@ public class ReviewService {
         eventProducer.publishCreatedEvent(ReviewCreatedEvent.from(savedReview));
 
         return ReviewResponse.from(savedReview);
+    }
+
+    // 리뷰 수정
+    public ReviewResponse updateReview(ReviewUpdateCommand command) {
+        // 트랜잭션 내부
+        Review updatedReview = transactionTemplate.execute(status -> {
+            // 존재하는지 확인
+            Review review = reviewRepository.findActiveById(command.reviewId())
+                    .orElseThrow(() -> new NotFoundException(ReviewErrorCode.REVIEW_NOT_FOUND));
+
+            review.updateReview(command.userId(), command.role(), command.score(), command.contents());
+            return review;
+        });
+
+        // 이벤트 발행
+        eventProducer.publishUpdatedEvent(ReviewUpdatedEvent.from(updatedReview));
+
+        return ReviewResponse.from(updatedReview);
     }
 
 }

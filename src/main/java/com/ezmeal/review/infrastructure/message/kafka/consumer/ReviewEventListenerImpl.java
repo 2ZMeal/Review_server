@@ -26,7 +26,7 @@ public class ReviewEventListenerImpl {
 
     private final ReviewService reviewService;
 
-    // ==================
+    // ==================ㅋ
     // 일반 C, U, D 이벤트
     // ==================
 
@@ -64,7 +64,7 @@ public class ReviewEventListenerImpl {
 
             log.info("[Kafka] 유저({})의 요청으로 리뷰({})를 수정합니다.", userId, message.reviewId());
             ReviewUpdateCommand command = message.toCommand(userId, role);
-            // reviewService.updateReview(command);
+            reviewService.updateReview(command);
         }
     }
 
