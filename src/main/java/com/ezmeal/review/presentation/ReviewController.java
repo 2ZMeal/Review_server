@@ -3,6 +3,7 @@ package com.ezmeal.review.presentation;
 import com.ezmeal.common.response.CommonApiResponse;
 import com.ezmeal.common.security.principal.CustomUserPrincipal;
 import com.ezmeal.review.application.dto.command.ReviewCreateCommand;
+import com.ezmeal.review.application.dto.command.ReviewDeleteCommand;
 import com.ezmeal.review.application.dto.command.ReviewUpdateCommand;
 import com.ezmeal.review.application.dto.response.ReviewResponse;
 import com.ezmeal.review.application.service.ReviewService;
@@ -19,6 +20,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -89,6 +91,22 @@ public class ReviewController {
         ReviewAverageScoreDto response = reviewService.getReviewStatistics(productId);
 
         return ResponseEntity.ok(CommonApiResponse.success(response));
+    }
+
+    // 리뷰 삭제
+    @DeleteMapping("/{reviewId}")
+    public ResponseEntity<CommonApiResponse<Void>> deleteReview(
+            @PathVariable("reviewId") UUID reviewId,
+            @AuthenticationPrincipal CustomUserPrincipal principal
+    ) {
+        ReviewDeleteCommand command = new ReviewDeleteCommand(
+                reviewId,
+                principal.getUserId(),
+                principal.getRole()
+        );
+        reviewService.deleteReview(command);
+
+        return ResponseEntity.ok(CommonApiResponse.success(null));
     }
 
 }
