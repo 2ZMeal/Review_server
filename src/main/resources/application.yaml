@@ -4,6 +4,7 @@ spring:
 
   config:
     import: "configserver:"
+
   cloud:
     config:
       uri: http://config-server:8888
@@ -11,3 +12,12 @@ spring:
       retry:
         max-attempts: 3
         initial-interval: 1000
+
+  kafka:
+    bootstrap-servers: http://kafka-server:9092
+
+    consumer:
+      group-id: review-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.ByteArrayDeserializer
