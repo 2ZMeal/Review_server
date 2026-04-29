@@ -7,7 +7,6 @@ public record ReviewUpdateCommand(
         UUID reviewId,
         String userId,
         Role role,
-        String nickname,
         int score,
         String contents
 ) {

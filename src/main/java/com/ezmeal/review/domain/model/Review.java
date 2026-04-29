@@ -75,12 +75,10 @@ public class Review extends BaseEntity {
     }
 
     // 수정 (작성자이거나 관리자만 가능)
-    public void updateReview(String userId, Role role, String nickname, int score, String contents) {
-        validateRequiredString(nickname, "nickname");
+    public void updateReview(String userId, Role role, int score, String contents) {
         validateScore(score);
 
         if (checkRole(userId, role)) {
-            this.nickname = nickname;
             this.score = score;
             this.contents = contents;
         } else {

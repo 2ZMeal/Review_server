@@ -63,34 +63,5 @@ public class ReviewService {
         return ReviewResponse.from(savedReview);
     }
 
-    public ReviewResponse updateReview(ReviewUpdateCommand command) {
-        // 트랜잭션 내부
-        Review updatedReview = transactionTemplate.execute(status -> {
-            // 존재하는지 확인
-            Review review = reviewRepository.findActiveById(command.reviewId())
-                    .orElseThrow(() -> new NotFoundException(ReviewErrorCode.REVIEW_NOT_FOUND));
-
-            review.updateReview(command.userId(), command.role(), command.nickname(), command.score(), command.contents());
-            return review;
-        });
-
-        // 이벤트 발행
-        eventProducer.publishUpdatedEvent(ReviewUpdatedEvent.from(updatedReview));
-
-        return ReviewResponse.from(updatedReview);
-    }
-
-    public void deleteReview(ReviewDeleteCommand command) {
-        // 트랜잭션 내부
-        Review deletedReview = transactionTemplate.execute(status -> {
-            Review review = reviewRepository.findActiveById(command.reviewId())
-                    .orElseThrow(() -> new NotFoundException(ReviewErrorCode.REVIEW_NOT_FOUND));
-            review.delete(command.userId(), command.role());
-            return review;
-        });
-
-        // 트랜잭션 외부: 커밋 후 이벤트 발행
-        eventProducer.publishDeletedEvent(ReviewDeletedEvent.from(deletedReview));
-    }
 
 }
