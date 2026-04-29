@@ -36,16 +36,22 @@ public class ReviewRepositoryImpl implements ReviewRepository {
         return jpaReviewRepository.findActiveById(reviewId);
     }
 
-    // 멱등성 검사 (이미 존재하는 리뷰인지 검사)
+    // 멱등성 검사 1 (이미 존재하는 리뷰인지 검사)
     @Override
     public boolean existsActiveByUserIdAndProductId(String userId, String productId) {
         return jpaReviewRepository.existsByUserIdAndProductIdAndDeletedAtIsNull(userId, productId);
     }
 
-    // 멱등성 검사 2 (삭제했던 리뷰도 포함)
+    // 멱등성 검사 2 (삭제했던 리뷰도 포함) // createReview
     @Override
     public Optional<Review> findByUserIdAndProductId(String userId, String productId) {
         return jpaReviewRepository.findByUserIdAndProductId(userId, productId);
+    }
+
+    // 멱등성 검사 3 (삭제 여부 상관 없이 조회) // deleteReview (reviewId만 존재)
+    @Override
+    public Optional<Review> findById(UUID reviewId) {
+        return jpaReviewRepository.findById(reviewId);
     }
 
 

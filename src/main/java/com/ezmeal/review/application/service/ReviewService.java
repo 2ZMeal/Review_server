@@ -134,8 +134,13 @@ public class ReviewService {
             Review review = reviewRepository.findActiveById(command.reviewId())
                     .orElseThrow(() -> new NotFoundException(ReviewErrorCode.REVIEW_NOT_FOUND));
 
-            // 도메인 엔티티의 delete 메서드 호출 (내부에서 작성자 본인 및 Admin 권한 검증 수행)
-            review.delete(command.userId(), command.role());
+            // 삭제되지 않은 경우에만 삭제 로직 수행
+            if (review.getDeletedAt() == null) {
+                review.delete(command.userId(), command.role());
+            } else {
+                // 이미 삭제된 리뷰에 대한 재요청인 경우
+                log.info("이미 삭제 처리된 리뷰입니다. reviewId: {}", command.reviewId());
+            }
 
             return review;
         });

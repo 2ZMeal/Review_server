@@ -18,6 +18,7 @@ public interface ReviewRepository {
     // 멱등성 처리 (중복 생성하지 않도록)
     boolean existsActiveByUserIdAndProductId(String userId, String productId);
     Optional<Review> findByUserIdAndProductId(String userId, String productId);
+    Optional<Review> findById(UUID id);
 
     // 일괄처리
     void bulkSoftDeleteByUserId(String userId, String deletedBy);
