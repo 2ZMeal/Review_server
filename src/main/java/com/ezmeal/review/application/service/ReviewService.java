@@ -14,6 +14,7 @@ import com.ezmeal.review.domain.repository.ReviewRepository;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -41,28 +42,35 @@ public class ReviewService {
     public ReviewResponse createReview(ReviewCreateCommand command) {
         UserData userData = userProvider.getUser(command.userId());
 
-        Review savedReview = transactionTemplate.execute(status -> {
+        Review savedReview;
+        try {
+            // 트랜잭션 내부
+            savedReview = transactionTemplate.execute(status -> {
+                // 삭제 여부와 상관없이 유저-상품으로 리뷰 조회
+                Optional<Review> existingReview = reviewRepository.findByUserIdAndProductId(command.userId(), command.productId());
 
-            // 삭제 여부와 상관없이 유저-상품으로 리뷰 조회
-            Optional<Review> existingReview = reviewRepository.findByUserIdAndProductId(command.userId(), command.productId());
-
-            if (existingReview.isPresent()) {
-                Review review = existingReview.get();
-                if (review.getDeletedAt() == null) {
-                    // 삭제되지 않은 리뷰가 있는 경우
-                    throw new ConflictException(ReviewErrorCode.ALREADY_REVIEWED);
-                } else {
-                    // 삭제된 리뷰가 있는 경우 (재작성 불가 정책)
-                    throw new ForbiddenException(ReviewErrorCode.CANNOT_REWRITE_DELETED_REVIEW);
+                if (existingReview.isPresent()) {
+                    Review review = existingReview.get();
+                    if (review.getDeletedAt() == null) {
+                        throw new ConflictException(ReviewErrorCode.ALREADY_REVIEWED);
+                    } else {
+                        throw new ForbiddenException(ReviewErrorCode.CANNOT_REWRITE_DELETED_REVIEW);
+                    }
                 }
-            }
 
-            // 리뷰가 아예 없었던 경우만 정상 생성
-            Review review = Review.create(command.userId(), userData.nickname(), command.productId(), command.score(), command.contents());
-            return reviewRepository.save(review);
-        });
+                // 리뷰가 아예 없었던 경우만 정상 생성
+                Review review = Review.create(command.userId(), userData.nickname(), command.productId(), command.score(), command.contents());
+                return reviewRepository.save(review);
+            });
+        } catch (DataIntegrityViolationException e) {
+            // 동시성 문제로 DB Unique 에러가 발생하면 예외 발생 (빠르게 따닥 클릭하는 경우)
+            log.warn("동시 리뷰 작성 요청 발생: userId={}, productId={}", command.userId(), command.productId());
+            throw new ConflictException(ReviewErrorCode.ALREADY_REVIEWED);
+        }
 
+        // 이벤트 발행
         eventProducer.publishCreatedEvent(ReviewCreatedEvent.from(savedReview));
+
         return ReviewResponse.from(savedReview);
     }
 
