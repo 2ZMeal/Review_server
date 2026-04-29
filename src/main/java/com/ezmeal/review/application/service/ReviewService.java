@@ -14,11 +14,16 @@ import com.ezmeal.review.domain.model.Review;
 import com.ezmeal.review.domain.provider.UserData;
 import com.ezmeal.review.domain.provider.UserProvider;
 import com.ezmeal.review.domain.repository.ReviewRepository;
+import com.ezmeal.review.domain.repository.dto.ReviewAverageScoreDto;
+import com.ezmeal.review.domain.repository.dto.ReviewSearchConditionDto;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @Slf4j
@@ -93,6 +98,30 @@ public class ReviewService {
         eventProducer.publishUpdatedEvent(ReviewUpdatedEvent.from(updatedReview));
 
         return ReviewResponse.from(updatedReview);
+    }
+
+    // 단건 리뷰 상세 조회
+    @Transactional(readOnly = true)
+    public ReviewResponse getReview(java.util.UUID reviewId) {
+        Review review = reviewRepository.findActiveById(reviewId)
+                .orElseThrow(() -> new NotFoundException(ReviewErrorCode.REVIEW_NOT_FOUND));
+        return ReviewResponse.from(review);
+    }
+
+    // 다건 조건 검색 및 페이징 조회
+    @Transactional(readOnly = true)
+    public Page<ReviewResponse> searchReviews(ReviewSearchConditionDto condition, Pageable pageable) {
+        // QueryDSL 레포지토리를 통해 엔티티 Page 조회
+        Page<Review> reviewPage = reviewRepository.searchActiveReviews(condition, pageable);
+
+        // 엔티티를 DTO로 변환하여 반환 (Page 인터페이스의 map 활용)
+        return reviewPage.map(ReviewResponse::from);
+    }
+
+    // 특정 상품의 리뷰 평균 통계 조회
+    @Transactional(readOnly = true)
+    public ReviewAverageScoreDto getReviewStatistics(String productId) {
+        return reviewRepository.getReviewAverageScoreByProductId(productId);
     }
 
 }
