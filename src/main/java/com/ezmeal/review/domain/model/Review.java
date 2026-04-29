@@ -11,6 +11,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -20,7 +21,12 @@ import lombok.NoArgsConstructor;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "p_review", schema = "review_db")
+@Table(name = "p_review", schema = "review_db", uniqueConstraints = {
+        @UniqueConstraint(
+                name = "uk_user_product",
+                columnNames = {"user_id", "product_id"}
+        )
+})
 public class Review extends BaseEntity {
 
     @Id
@@ -54,6 +60,9 @@ public class Review extends BaseEntity {
 
     // 생성
     public static Review create(String userId, String nickname, String productId, int score, String contents) {
+        validateRequiredString(userId, "userId");
+        validateRequiredString(nickname, "nickname");
+        validateRequiredString(productId, "productId");
         validateScore(score);
 
         return Review.builder()
@@ -67,6 +76,7 @@ public class Review extends BaseEntity {
 
     // 수정 (작성자이거나 관리자만 가능)
     public void updateReview(String userId, Role role, String nickname, int score, String contents) {
+        validateRequiredString(nickname, "nickname");
         validateScore(score);
 
         if (checkRole(userId, role)) {
@@ -91,6 +101,13 @@ public class Review extends BaseEntity {
     private static void validateScore(int score) {
         if (score < 1 || score > 5) {
             throw new BadRequestException(ReviewErrorCode.INVALID_SCORE);
+        }
+    }
+
+    // 검증 메서드
+    private static void validateRequiredString(String value, String fieldName) {
+        if (value == null || value.isBlank()) {
+            throw new BadRequestException(ReviewErrorCode.INVALID_INPUT);
         }
     }
 

@@ -49,50 +49,48 @@ public class ReviewService {
         UserData userData = userProvider.getUser(command.userId());
 
         // 트랜잭션 내부
-        return transactionTemplate.execute(status -> {
-
+        Review savedReview = transactionTemplate.execute(status -> {
             if (reviewRepository.existsActiveByUserIdAndProductId(command.userId(), command.productId())) {
                 throw new ConflictException(ReviewErrorCode.ALREADY_REVIEWED);
             }
-
             Review review = Review.create(command.userId(), userData.nickname(), command.productId(), command.score(), command.contents());
-            Review savedReview = reviewRepository.save(review);
-
-            // 이벤트 발행
-            eventProducer.publishCreatedEvent(ReviewCreatedEvent.from(savedReview));
-
-            return ReviewResponse.from(savedReview);
+            return reviewRepository.save(review);
         });
+
+        // 이벤트 발행
+        eventProducer.publishCreatedEvent(ReviewCreatedEvent.from(savedReview));
+
+        return ReviewResponse.from(savedReview);
     }
 
     public ReviewResponse updateReview(ReviewUpdateCommand command) {
         // 트랜잭션 내부
-        return transactionTemplate.execute(status -> {
+        Review updatedReview = transactionTemplate.execute(status -> {
             // 존재하는지 확인
             Review review = reviewRepository.findActiveById(command.reviewId())
                     .orElseThrow(() -> new NotFoundException(ReviewErrorCode.REVIEW_NOT_FOUND));
 
             review.updateReview(command.userId(), command.role(), command.nickname(), command.score(), command.contents());
-
-            // 이벤트 발행
-            eventProducer.publishUpdatedEvent(ReviewUpdatedEvent.from(review));
-
-            return ReviewResponse.from(review);
+            return review;
         });
+
+        // 이벤트 발행
+        eventProducer.publishUpdatedEvent(ReviewUpdatedEvent.from(updatedReview));
+
+        return ReviewResponse.from(updatedReview);
     }
 
     public void deleteReview(ReviewDeleteCommand command) {
         // 트랜잭션 내부
-        transactionTemplate.executeWithoutResult(status -> {
-            // 존재하는지 확인
+        Review deletedReview = transactionTemplate.execute(status -> {
             Review review = reviewRepository.findActiveById(command.reviewId())
                     .orElseThrow(() -> new NotFoundException(ReviewErrorCode.REVIEW_NOT_FOUND));
-
             review.delete(command.userId(), command.role());
-
-            // 이벤트 발행
-            eventProducer.publishDeletedEvent(ReviewDeletedEvent.from(review));
+            return review;
         });
+
+        // 트랜잭션 외부: 커밋 후 이벤트 발행
+        eventProducer.publishDeletedEvent(ReviewDeletedEvent.from(deletedReview));
     }
 
 }
