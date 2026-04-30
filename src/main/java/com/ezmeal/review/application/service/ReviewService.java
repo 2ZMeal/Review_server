@@ -4,10 +4,12 @@ import com.ezmeal.common.exception.types.ConflictException;
 import com.ezmeal.common.exception.types.ForbiddenException;
 import com.ezmeal.common.exception.types.NotFoundException;
 import com.ezmeal.review.application.dto.command.ReviewCreateCommand;
+import com.ezmeal.review.application.dto.command.ReviewDeleteCommand;
 import com.ezmeal.review.application.dto.command.ReviewUpdateCommand;
 import com.ezmeal.review.application.dto.response.ReviewResponse;
 import com.ezmeal.review.domain.event.ReviewEventProducer;
 import com.ezmeal.review.domain.event.payload.publish.ReviewCreatedEvent;
+import com.ezmeal.review.domain.event.payload.publish.ReviewDeletedEvent;
 import com.ezmeal.review.domain.event.payload.publish.ReviewUpdatedEvent;
 import com.ezmeal.review.domain.exception.ReviewErrorCode;
 import com.ezmeal.review.domain.model.Review;
@@ -123,5 +125,53 @@ public class ReviewService {
     public ReviewAverageScoreDto getReviewStatistics(String productId) {
         return reviewRepository.getReviewAverageScoreByProductId(productId);
     }
+
+    // 리뷰 삭제
+    public void deleteReview(ReviewDeleteCommand command) {
+        // 트랜잭션 내부에서 DB 변경 감지(Soft Delete) 처리
+        Review deletedReview = transactionTemplate.execute(status -> {
+            // 삭제되지 않은 유효한 리뷰인지 확인
+            Review review = reviewRepository.findActiveById(command.reviewId())
+                    .orElseThrow(() -> new NotFoundException(ReviewErrorCode.REVIEW_NOT_FOUND));
+
+            // 삭제되지 않은 경우에만 삭제 로직 수행
+            if (review.getDeletedAt() == null) {
+                review.delete(command.userId(), command.role());
+            } else {
+                // 이미 삭제된 리뷰에 대한 재요청인 경우
+                log.info("이미 삭제 처리된 리뷰입니다. reviewId: {}", command.reviewId());
+            }
+
+            return review;
+        });
+
+        // 이벤트 발행
+        eventProducer.publishDeletedEvent(ReviewDeletedEvent.from(deletedReview));
+    }
+
+    // 회읜이 닉네임을 바꿀 시 리뷰도 닉네임 변경
+    public void bulkUpdateNicknameByUserId(String userId, String newNickname) {
+        transactionTemplate.executeWithoutResult(status -> {
+            reviewRepository.bulkUpdateNicknameByUserId(userId, newNickname);
+        });
+        log.info("유저({})의 모든 리뷰 닉네임이 [{}]로 일괄 변경되었습니다.", userId, newNickname);
+    }
+
+    // 유저 탈퇴시 해당 유저의 리뷰 일괄 삭제
+    public void bulkSoftDeleteByUserId(String userId, String deletedBy) {
+        transactionTemplate.executeWithoutResult(status -> {
+            reviewRepository.bulkSoftDeleteByUserId(userId, deletedBy);
+        });
+        log.info("유저({}) 탈퇴로 인해 작성한 모든 리뷰가 삭제 처리되었습니다. (deletedBy={})", userId, deletedBy);
+    }
+
+    // 상품 삭제시 해당 상품의 리뷰 일괄 삭제
+    public void bulkSoftDeleteByProductId(String productId, String deletedBy) {
+        transactionTemplate.executeWithoutResult(status -> {
+            reviewRepository.bulkSoftDeleteByProductId(productId, deletedBy);
+        });
+        log.info("상품({}) 삭제로 인해 종속된 모든 리뷰가 삭제 처리되었습니다. (deletedBy={})", productId, deletedBy);
+    }
+
 
 }

@@ -80,14 +80,14 @@ public class ReviewEventListenerImpl {
         if ("SYSTEM".equals(userId)) {
             log.info("[Kafka] 시스템 요청으로 리뷰({})를 삭제합니다.", message.reviewId());
             ReviewDeleteCommand systemCommand = message.toCommand("SYSTEM", Role.ADMIN);
-            // reviewService.deleteReview(systemCommand);
+            reviewService.deleteReview(systemCommand);
         } else {
             // 일반 유저인 경우에만 엄격한 Role 검사 수행
             Role role = extractRoleHeader(roleBytes);
 
             log.info("[Kafka] 유저({})의 요청으로 리뷰({})를 삭제합니다.", userId, message.reviewId());
             ReviewDeleteCommand command = message.toCommand(userId, role);
-            // reviewService.deleteReview(command);
+            reviewService.deleteReview(command);
         }
     }
 
@@ -101,8 +101,8 @@ public class ReviewEventListenerImpl {
             @Header(value = "X-User-Id", required = false) byte[] userIdBytes
     ) {
         String userId = extractStringHeader(userIdBytes, "SYSTEM");
-        log.info("[Kafka] 주체({})의 요청으로 닉네임 일괄 변경을 수행합니다. 대상 유저: {}", userId, message.userId());
-        // reviewService.bulkUpdateNicknameByUserId(message.userId(), message.newNickname());
+        log.info("[Kafka] ({})의 요청으로 닉네임 일괄 변경을 수행합니다. 대상 유저: {}", userId, message.userId());
+        reviewService.bulkUpdateNicknameByUserId(message.userId(), message.newNickname());
     }
 
     @KafkaListener(topics = "${kafka.topic.user.deleted:user-deleted-topic}", groupId = "${spring.kafka.consumer.group-id:review-group}")
@@ -111,8 +111,8 @@ public class ReviewEventListenerImpl {
             @Header(value = "X-User-Id", required = false) byte[] userIdBytes
     ) {
         String deletedBy = extractStringHeader(userIdBytes, "SYSTEM");
-        log.info("[Kafka] 주체({})의 요청으로 유저의 모든 리뷰 일괄 삭제를 수행합니다. 대상 유저: {}", deletedBy, message.userId());
-        // reviewService.bulkSoftDeleteByUserId(message.userId(), deletedBy);
+        log.info("[Kafka] ({})의 요청으로 유저의 모든 리뷰 일괄 삭제를 수행합니다. 대상 유저: {}", deletedBy, message.userId());
+        reviewService.bulkSoftDeleteByUserId(message.userId(), deletedBy);
     }
 
     @KafkaListener(topics = "${kafka.topic.product.deleted:product-deleted-topic}", groupId = "${spring.kafka.consumer.group-id:review-group}")
@@ -121,8 +121,8 @@ public class ReviewEventListenerImpl {
             @Header(value = "X-User-Id", required = false) byte[] userIdBytes
     ) {
         String deletedBy = extractStringHeader(userIdBytes, "SYSTEM");
-        log.info("[Kafka] 주체({})의 요청으로 상품의 모든 리뷰 일괄 삭제를 수행합니다. 대상 상품: {}", deletedBy, message.productId());
-        // reviewService.bulkSoftDeleteByProductId(message.productId(), deletedBy);
+        log.info("[Kafka] ({})의 요청으로 상품의 모든 리뷰 일괄 삭제를 수행합니다. 대상 상품: {}", deletedBy, message.productId());
+        reviewService.bulkSoftDeleteByProductId(message.productId(), deletedBy);
     }
 
     // ===================
