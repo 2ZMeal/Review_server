@@ -26,7 +26,7 @@ public class ReviewEventListenerImpl {
 
     private final ReviewService reviewService;
 
-    // ==================ㅋ
+    // ==================
     // 일반 C, U, D 이벤트
     // ==================
 
