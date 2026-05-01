@@ -6,7 +6,6 @@ import java.util.UUID;
 
 public record ReviewUpdateMessage(
         UUID reviewId,
-        String nickname,
         int score,
         String contents
 ) {
@@ -16,7 +15,6 @@ public record ReviewUpdateMessage(
                 this.reviewId,
                 userId,
                 role,
-                this.nickname,
                 this.score,
                 this.contents
         );
