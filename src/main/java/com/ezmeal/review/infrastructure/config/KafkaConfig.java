@@ -19,7 +19,20 @@ public class KafkaConfig {
 
     @Bean
     public JsonMessageConverter jsonMessageConverter() {
-        return new ByteArrayJsonMessageConverter();
+        ByteArrayJsonMessageConverter converter = new ByteArrayJsonMessageConverter();
+
+        org.springframework.kafka.support.mapping.DefaultJackson2JavaTypeMapper typeMapper =
+                new org.springframework.kafka.support.mapping.DefaultJackson2JavaTypeMapper();
+
+        typeMapper.setTypePrecedence(
+                org.springframework.kafka.support.mapping.Jackson2JavaTypeMapper.TypePrecedence.INFERRED
+        );
+
+        // 보안 필터 허용 (모든 패키지 허용)
+        typeMapper.addTrustedPackages("*");
+
+        converter.setTypeMapper(typeMapper);
+        return converter;
     }
 
     @Bean

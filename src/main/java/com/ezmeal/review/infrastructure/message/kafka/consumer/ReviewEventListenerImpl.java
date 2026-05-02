@@ -31,7 +31,7 @@ public class ReviewEventListenerImpl {
     // ==================
 
     // 리뷰 생성 메시지 수신
-    @KafkaListener(topics = "review-create-command-topic", groupId = "${spring.kafka.consumer.group-id:review-group}")
+    @KafkaListener(topics = "review-create-command-topic", groupId = "${spring.kafka.consumer.group-id:review-group}", containerFactory = "customKafkaListenerContainerFactory")
     public void handleReviewCreate(
             @Payload ReviewCreateMessage message,
             @Header(value = "X-User-Id", required = false) byte[] userIdBytes
@@ -48,11 +48,11 @@ public class ReviewEventListenerImpl {
     }
 
     // 리뷰 수정 메시지 수신
-    @KafkaListener(topics = "review-update-command-topic", groupId = "${spring.kafka.consumer.group-id:review-group}")
+    @KafkaListener(topics = "review-update-command-topic", groupId = "${spring.kafka.consumer.group-id:review-group}", containerFactory = "customKafkaListenerContainerFactory")
     public void handleReviewUpdate(
             @Payload ReviewUpdateMessage message,
             @Header(value = "X-User-Id", required = false) byte[] userIdBytes,
-            @Header(value = "X-User-Role", required = false) byte[] roleBytes
+            @Header(value = "X-User-Roles", required = false) byte[] roleBytes
     ) {
         String userId = extractStringHeader(userIdBytes, "SYSTEM");
 
@@ -69,11 +69,11 @@ public class ReviewEventListenerImpl {
     }
 
     // 리뷰 삭제 메시지 수신
-    @KafkaListener(topics = "review-delete-command-topic", groupId = "${spring.kafka.consumer.group-id:review-group}")
+    @KafkaListener(topics = "review-delete-command-topic", groupId = "${spring.kafka.consumer.group-id:review-group}", containerFactory = "customKafkaListenerContainerFactory")
     public void handleReviewDelete(
             @Payload ReviewDeleteMessage message,
             @Header(value = "X-User-Id", required = false) byte[] userIdBytes,
-            @Header(value = "X-User-Role", required = false) byte[] roleBytes
+            @Header(value = "X-User-Roles", required = false) byte[] roleBytes
     ) {
         String userId = extractStringHeader(userIdBytes, "SYSTEM");
 
@@ -95,7 +95,7 @@ public class ReviewEventListenerImpl {
     // 일괄 처리 이벤트 (타 서버에서 발생한 이벤트 수신)
     // ==========================================
 
-    @KafkaListener(topics = "${kafka.topic.user.nickname.updated:user-nickname-updated-topic}", groupId = "${spring.kafka.consumer.group-id:review-group}")
+    @KafkaListener(topics = "${kafka.topic.user.nickname.updated:user-nickname-updated-topic}", groupId = "${spring.kafka.consumer.group-id:review-group}", containerFactory = "customKafkaListenerContainerFactory")
     public void consumeUserNicknameUpdatedEvent(
             @Payload UserNicknameUpdatedMessage message,
             @Header(value = "X-User-Id", required = false) byte[] userIdBytes
@@ -105,7 +105,7 @@ public class ReviewEventListenerImpl {
         reviewService.bulkUpdateNicknameByUserId(message.userId(), message.newNickname());
     }
 
-    @KafkaListener(topics = "${kafka.topic.user.deleted:user-deleted-topic}", groupId = "${spring.kafka.consumer.group-id:review-group}")
+    @KafkaListener(topics = "${kafka.topic.user.deleted:user-deleted-topic}", groupId = "${spring.kafka.consumer.group-id:review-group}", containerFactory = "customKafkaListenerContainerFactory")
     public void consumeUserDeletedEvent(
             @Payload UserDeletedMessage message,
             @Header(value = "X-User-Id", required = false) byte[] userIdBytes
@@ -115,7 +115,7 @@ public class ReviewEventListenerImpl {
         reviewService.bulkSoftDeleteByUserId(message.userId(), deletedBy);
     }
 
-    @KafkaListener(topics = "${kafka.topic.product.deleted:product-deleted-topic}", groupId = "${spring.kafka.consumer.group-id:review-group}")
+    @KafkaListener(topics = "${kafka.topic.product.deleted:product-deleted-topic}", groupId = "${spring.kafka.consumer.group-id:review-group}", containerFactory = "customKafkaListenerContainerFactory")
     public void consumeProductDeletedEvent(
             @Payload ProductDeletedMessage message,
             @Header(value = "X-User-Id", required = false) byte[] userIdBytes
@@ -141,8 +141,8 @@ public class ReviewEventListenerImpl {
     private Role extractRoleHeader(byte[] roleBytes) {
         // 헤더가 누락된 경우 (유저 요청인데 Role이 없으면 비정상 접근으로 간주)
         if (roleBytes == null || roleBytes.length == 0) {
-            log.error("[Kafka] 필수 헤더인 X-User-Role이 누락되었습니다.");
-            throw new IllegalArgumentException("필수 권한 헤더(X-User-Role)가 없습니다.");
+            log.error("[Kafka] 필수 헤더인 X-User-Roles이 누락되었습니다.");
+            throw new IllegalArgumentException("필수 권한 헤더(X-User-Roles)가 없습니다.");
         }
 
         // 헤더 값을 Enum으로 변환
