@@ -10,6 +10,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 public interface UserClient {
 
     // 리뷰 작성자의 nickname을 가져오기 위해 호출
-    @GetMapping("/api/v1/users/{userId}")
+    @GetMapping("/internal/v1/users/{userId}")
     CommonApiResponse<UserResponse> getUser(@PathVariable("userId") String userId);
 }
