@@ -61,6 +61,7 @@ public class ReviewEventProducerImpl implements ReviewEventProducer {
         if (auth != null && auth.isAuthenticated() && auth.getPrincipal() instanceof CustomUserPrincipal principal) {
             record.headers().add("X-User-Id", principal.getUserId().getBytes(StandardCharsets.UTF_8));
             record.headers().add("X-User-Roles", principal.getRole().name().getBytes(StandardCharsets.UTF_8));
+            record.headers().add("X-User-Email", principal.getEmail().getBytes(StandardCharsets.UTF_8));
         }
 
         // 카프카 전송
