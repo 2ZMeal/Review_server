@@ -6,11 +6,11 @@ import com.ezmeal.review.application.dto.command.ReviewDeleteCommand;
 import com.ezmeal.review.application.dto.command.ReviewUpdateCommand;
 import com.ezmeal.review.application.service.ReviewService;
 import com.ezmeal.review.infrastructure.message.kafka.consumer.dto.ProductDeletedMessage;
-import com.ezmeal.review.infrastructure.message.kafka.consumer.dto.UserDeletedMessage;
-import com.ezmeal.review.infrastructure.message.kafka.consumer.dto.UserNicknameUpdatedMessage;
 import com.ezmeal.review.infrastructure.message.kafka.consumer.dto.ReviewCreateMessage;
 import com.ezmeal.review.infrastructure.message.kafka.consumer.dto.ReviewDeleteMessage;
 import com.ezmeal.review.infrastructure.message.kafka.consumer.dto.ReviewUpdateMessage;
+import com.ezmeal.review.infrastructure.message.kafka.consumer.dto.UserDeletedMessage;
+import com.ezmeal.review.infrastructure.message.kafka.consumer.dto.UserNickNameUpdatedMessage;
 import java.nio.charset.StandardCharsets;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -95,17 +95,17 @@ public class ReviewEventListenerImpl {
     // 일괄 처리 이벤트 (타 서버에서 발생한 이벤트 수신)
     // ==========================================
 
-    @KafkaListener(topics = "${kafka.topic.user.nickname.updated:user-nickname-updated-topic}", groupId = "${spring.kafka.consumer.group-id:review-group}", containerFactory = "customKafkaListenerContainerFactory")
+    @KafkaListener(topics = "${kafka.topic.user.nickname.updated:user.updated}", groupId = "${spring.kafka.consumer.group-id:customer-group}", containerFactory = "customKafkaListenerContainerFactory")
     public void consumeUserNicknameUpdatedEvent(
-            @Payload UserNicknameUpdatedMessage message,
+            @Payload UserNickNameUpdatedMessage message,
             @Header(value = "X-User-Id", required = false) byte[] userIdBytes
     ) {
         String userId = extractStringHeader(userIdBytes, "SYSTEM");
         log.info("[Kafka] ({})의 요청으로 닉네임 일괄 변경을 수행합니다. 대상 유저: {}", userId, message.userId());
-        reviewService.bulkUpdateNicknameByUserId(message.userId(), message.newNickname());
+        reviewService.bulkUpdateNicknameByUserId(message.userId(), message.userNickname());
     }
 
-    @KafkaListener(topics = "${kafka.topic.user.deleted:user-deleted-topic}", groupId = "${spring.kafka.consumer.group-id:review-group}", containerFactory = "customKafkaListenerContainerFactory")
+    @KafkaListener(topics = "${kafka.topic.user.deleted:user.deleted}", groupId = "${spring.kafka.consumer.group-id:customer-group}", containerFactory = "customKafkaListenerContainerFactory")
     public void consumeUserDeletedEvent(
             @Payload UserDeletedMessage message,
             @Header(value = "X-User-Id", required = false) byte[] userIdBytes
