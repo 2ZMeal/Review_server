@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.core.Authentication;
@@ -62,6 +63,7 @@ public class ReviewEventProducerImpl implements ReviewEventProducer {
             record.headers().add("X-User-Id", principal.getUserId().getBytes(StandardCharsets.UTF_8));
             record.headers().add("X-User-Roles", principal.getRole().name().getBytes(StandardCharsets.UTF_8));
             record.headers().add("X-User-Email", principal.getEmail().getBytes(StandardCharsets.UTF_8));
+            record.headers().add("X-TraceId", MDC.get("traceId").getBytes(StandardCharsets.UTF_8));
         }
 
         // 카프카 전송
