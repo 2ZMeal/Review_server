@@ -1,10 +1,9 @@
 package com.ezmeal.review.infrastructure.message.kafka.consumer.dto;
 
+import com.ezmeal.common.message.DomainEvent;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import java.time.LocalDateTime;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record UserDeletedMessage(
-        String userId,
-        LocalDateTime occurredAt
-) {}
+        String userId
+) implements DomainEvent {}

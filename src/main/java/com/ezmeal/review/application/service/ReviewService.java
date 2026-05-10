@@ -36,27 +36,22 @@ public class ReviewService {
     private final ReviewRepository reviewRepository;
     private final ReviewEventProducer eventProducer;
     private final UserProvider userProvider;
-
-    /*
-    Feign Client가 @Transaction 내부에서 가져오는 경우면
-    DB 커넥션 풀이 고갈될 수 있음 (가져오는게 늦어지는 경우에)
-    이를 위해 transaction 범위를 세밀하게 지정할 수 있는 transactionTemplate를 사용
-    */
     private final TransactionTemplate transactionTemplate;
 
     // =============================================
     // API로 호출하는 경우와 이벤트를 수신했을 때를 모두 대응
     // =============================================
 
-    // 리뷰 생성
+    // 리뷰 생성 (외부 API 통신이 있으므로 TransactionTemplate 사용)
     public ReviewResponse createReview(ReviewCreateCommand command) {
-        UserData userData = userProvider.getUser(command.userId());
+        // Feign Client 호출 (DB 커넥션을 물고 있지 않음)
+        // UserData userData = userProvider.getUser(command.userId());
 
         Review savedReview;
         try {
-            // 트랜잭션 내부
+            // 비즈니스 로직 + Outbox 이벤트 발행을 하나의 트랜잭션으로 묶음
             savedReview = transactionTemplate.execute(status -> {
-                // 삭제 여부와 상관없이 유저-상품으로 리뷰 조회
+
                 Optional<Review> existingReview = reviewRepository.findByUserIdAndProductId(command.userId(), command.productId());
 
                 if (existingReview.isPresent()) {
@@ -68,41 +63,56 @@ public class ReviewService {
                     }
                 }
 
-                // 리뷰가 아예 없었던 경우만 정상 생성
                 Review review = Review.create(command.userId(), userData.nickname(), command.productId(), command.score(), command.contents());
-                return reviewRepository.save(review);
+                Review saved = reviewRepository.save(review);
+
+                // 트랜잭션이 끝나기 전에 이벤트 발행 (Outbox DB에 INIT 상태로 함께 저장)
+                eventProducer.publishCreatedEvent(ReviewCreatedEvent.from(saved));
+
+                return saved;
             });
         } catch (DataIntegrityViolationException e) {
-            // 동시성 문제로 DB Unique 에러가 발생하면 예외 발생 (빠르게 따닥 클릭하는 경우)
             log.warn("동시 리뷰 작성 요청 발생: userId={}, productId={}", command.userId(), command.productId());
             throw new ConflictException(ReviewErrorCode.ALREADY_REVIEWED);
         }
 
-        // 이벤트 발행
-        eventProducer.publishCreatedEvent(ReviewCreatedEvent.from(savedReview));
-
         return ReviewResponse.from(savedReview);
     }
 
-    // 리뷰 수정
+    // 리뷰 수정 (외부 통신이 없으므로 @Transactional 사용)
+    @Transactional
     public ReviewResponse updateReview(ReviewUpdateCommand command) {
-        // 트랜잭션 내부
-        Review updatedReview = transactionTemplate.execute(status -> {
-            // 존재하는지 확인
-            Review review = reviewRepository.findActiveById(command.reviewId())
-                    .orElseThrow(() -> new NotFoundException(ReviewErrorCode.REVIEW_NOT_FOUND));
+        Review review = reviewRepository.findActiveById(command.reviewId())
+                .orElseThrow(() -> new NotFoundException(ReviewErrorCode.REVIEW_NOT_FOUND));
 
-            review.updateReview(command.userId(), command.role(), command.score(), command.contents());
-            return review;
-        });
+        review.updateReview(command.userId(), command.role(), command.score(), command.contents());
 
-        // 이벤트 발행
-        eventProducer.publishUpdatedEvent(ReviewUpdatedEvent.from(updatedReview));
+        // 트랜잭션 내부에서 이벤트 발행 (Outbox 연동)
+        eventProducer.publishUpdatedEvent(ReviewUpdatedEvent.from(review));
 
-        return ReviewResponse.from(updatedReview);
+        return ReviewResponse.from(review);
     }
 
-    // 단건 리뷰 상세 조회
+    // 리뷰 삭제 (외부 통신이 없으므로 @Transactional 사용)
+    @Transactional
+    public void deleteReview(ReviewDeleteCommand command) {
+        Review review = reviewRepository.findActiveById(command.reviewId())
+                .orElseThrow(() -> new NotFoundException(ReviewErrorCode.REVIEW_NOT_FOUND));
+
+        if (review.getDeletedAt() == null) {
+            review.delete(command.userId(), command.role());
+
+            // 트랜잭션 내부에서 이벤트 발행 (Outbox 연동)
+            eventProducer.publishDeletedEvent(ReviewDeletedEvent.from(review));
+        } else {
+            log.info("이미 삭제 처리된 리뷰입니다. reviewId: {}", command.reviewId());
+        }
+    }
+
+    // =============================================
+    // 단순 조회 메서드들 (@Transactional(readOnly = true))
+    // =============================================
+
     @Transactional(readOnly = true)
     public ReviewResponse getReview(java.util.UUID reviewId) {
         Review review = reviewRepository.findActiveById(reviewId)
@@ -110,68 +120,36 @@ public class ReviewService {
         return ReviewResponse.from(review);
     }
 
-    // 다건 조건 검색 및 페이징 조회
     @Transactional(readOnly = true)
     public Page<ReviewResponse> searchReviews(ReviewSearchConditionDto condition, Pageable pageable) {
-        // QueryDSL 레포지토리를 통해 엔티티 Page 조회
         Page<Review> reviewPage = reviewRepository.searchActiveReviews(condition, pageable);
-
-        // 엔티티를 DTO로 변환하여 반환 (Page 인터페이스의 map 활용)
         return reviewPage.map(ReviewResponse::from);
     }
 
-    // 특정 상품의 리뷰 평균 통계 조회
     @Transactional(readOnly = true)
     public ReviewAverageScoreDto getReviewStatistics(String productId) {
         return reviewRepository.getReviewAverageScoreByProductId(productId);
     }
 
-    // 리뷰 삭제
-    public void deleteReview(ReviewDeleteCommand command) {
-        // 트랜잭션 내부에서 DB 변경 감지(Soft Delete) 처리
-        Review deletedReview = transactionTemplate.execute(status -> {
-            // 삭제되지 않은 유효한 리뷰인지 확인
-            Review review = reviewRepository.findActiveById(command.reviewId())
-                    .orElseThrow(() -> new NotFoundException(ReviewErrorCode.REVIEW_NOT_FOUND));
+    // =============================================
+    // 일괄 처리 로직 (외부 통신 없으므로 @Transactional로 리팩토링)
+    // =============================================
 
-            // 삭제되지 않은 경우에만 삭제 로직 수행
-            if (review.getDeletedAt() == null) {
-                review.delete(command.userId(), command.role());
-            } else {
-                // 이미 삭제된 리뷰에 대한 재요청인 경우
-                log.info("이미 삭제 처리된 리뷰입니다. reviewId: {}", command.reviewId());
-            }
-
-            return review;
-        });
-
-        // 이벤트 발행
-        eventProducer.publishDeletedEvent(ReviewDeletedEvent.from(deletedReview));
-    }
-
-    // 회읜이 닉네임을 바꿀 시 리뷰도 닉네임 변경
+    @Transactional
     public void bulkUpdateNicknameByUserId(String userId, String newNickname) {
-        transactionTemplate.executeWithoutResult(status -> {
-            reviewRepository.bulkUpdateNicknameByUserId(userId, newNickname);
-        });
+        reviewRepository.bulkUpdateNicknameByUserId(userId, newNickname);
         log.info("유저({})의 모든 리뷰 닉네임이 [{}]로 일괄 변경되었습니다.", userId, newNickname);
     }
 
-    // 유저 탈퇴시 해당 유저의 리뷰 일괄 삭제
+    @Transactional
     public void bulkSoftDeleteByUserId(String userId, String deletedBy) {
-        transactionTemplate.executeWithoutResult(status -> {
-            reviewRepository.bulkSoftDeleteByUserId(userId, deletedBy);
-        });
+        reviewRepository.bulkSoftDeleteByUserId(userId, deletedBy);
         log.info("유저({}) 탈퇴로 인해 작성한 모든 리뷰가 삭제 처리되었습니다. (deletedBy={})", userId, deletedBy);
     }
 
-    // 상품 삭제시 해당 상품의 리뷰 일괄 삭제
+    @Transactional
     public void bulkSoftDeleteByProductId(String productId, String deletedBy) {
-        transactionTemplate.executeWithoutResult(status -> {
-            reviewRepository.bulkSoftDeleteByProductId(productId, deletedBy);
-        });
+        reviewRepository.bulkSoftDeleteByProductId(productId, deletedBy);
         log.info("상품({}) 삭제로 인해 종속된 모든 리뷰가 삭제 처리되었습니다. (deletedBy={})", productId, deletedBy);
     }
-
-
 }

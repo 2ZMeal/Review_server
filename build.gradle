@@ -27,12 +27,11 @@ repositories {
 
 ext {
     set('springCloudVersion', "2025.0.2")
-    set('datasourceMicrometerVersion', "1.4.1")
 }
 
 dependencies {
     // 공통모듈
-    implementation 'com.ezmeal:common:0.0.6'
+    implementation 'com.ezmeal:common:0.1.2'
 
     // 롬복
     compileOnly 'org.projectlombok:lombok'
@@ -53,7 +52,6 @@ dependencies {
 dependencyManagement {
     imports {
         mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
-        mavenBom "net.ttddyy.observation:datasource-micrometer-bom:${datasourceMicrometerVersion}"
     }
 }
 
