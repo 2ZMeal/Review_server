@@ -45,7 +45,7 @@ public class ReviewService {
     // 리뷰 생성 (외부 API 통신이 있으므로 TransactionTemplate 사용)
     public ReviewResponse createReview(ReviewCreateCommand command) {
         // Feign Client 호출 (DB 커넥션을 물고 있지 않음)
-        // UserData userData = userProvider.getUser(command.userId());
+        UserData userData = userProvider.getUser(command.userId());
 
         Review savedReview;
         try {
