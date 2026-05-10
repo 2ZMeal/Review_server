@@ -18,13 +18,13 @@ public class ReviewEventProducerImpl implements ReviewEventProducer {
     // KafkaTemplate 대신 공통 모듈의 EventPublisher를 주입받습니다.
     private final CommonKafkaEventPublisher eventPublisher;
 
-    @Value("${kafka.topic.review.created:review-created-topic}")
+    @Value("${kafka.topic.review.created:review.created}")
     private String reviewCreatedTopic;
 
-    @Value("${kafka.topic.review.updated:review-updated-topic}")
+    @Value("${kafka.topic.review.updated:review.updated}")
     private String reviewUpdatedTopic;
 
-    @Value("${kafka.topic.review.deleted:review-deleted-topic}")
+    @Value("${kafka.topic.review.deleted:review.deleted}")
     private String reviewDeletedTopic;
 
     @Override

@@ -33,7 +33,7 @@ public class ReviewEventListenerImpl {
     // 일반 C, U, D 이벤트
     // ==================
 
-    @KafkaListener(topics = "review-create-command-topic", groupId = "${spring.kafka.consumer.group-id:review-group}")
+    @KafkaListener(topics = "review.create.command", groupId = "${spring.kafka.consumer.group-id:review-group}")
     public void handleReviewCreate(EventEnvelope<ReviewCreateMessage> envelope) {
         inboxProcessor.processOnce(envelope.eventId(), () -> {
             CustomUserPrincipal principal = getCurrentPrincipal();
@@ -48,7 +48,7 @@ public class ReviewEventListenerImpl {
         });
     }
 
-    @KafkaListener(topics = "review-update-command-topic", groupId = "${spring.kafka.consumer.group-id:review-group}")
+    @KafkaListener(topics = "review.update.command", groupId = "${spring.kafka.consumer.group-id:review-group}")
     public void handleReviewUpdate(EventEnvelope<ReviewUpdateMessage> envelope) {
         inboxProcessor.processOnce(envelope.eventId(), () -> {
             CustomUserPrincipal principal = getCurrentPrincipal();
@@ -63,7 +63,7 @@ public class ReviewEventListenerImpl {
         });
     }
 
-    @KafkaListener(topics = "review-delete-command-topic", groupId = "${spring.kafka.consumer.group-id:review-group}")
+    @KafkaListener(topics = "review.delete.command", groupId = "${spring.kafka.consumer.group-id:review-group}")
     public void handleReviewDelete(EventEnvelope<ReviewDeleteMessage> envelope) {
         inboxProcessor.processOnce(envelope.eventId(), () -> {
             CustomUserPrincipal principal = getCurrentPrincipal();
@@ -102,7 +102,7 @@ public class ReviewEventListenerImpl {
         });
     }
 
-    @KafkaListener(topics = "${kafka.topic.product.deleted:product-deleted-topic}", groupId = "${spring.kafka.consumer.group-id:review-group}")
+    @KafkaListener(topics = "${kafka.topic.product.deleted:product.deleted}", groupId = "${spring.kafka.consumer.group-id:review-group}")
     public void consumeProductDeletedEvent(EventEnvelope<ProductDeletedMessage> envelope) {
         inboxProcessor.processOnce(envelope.eventId(), () -> {
             CustomUserPrincipal principal = getCurrentPrincipal();
